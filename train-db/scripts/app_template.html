@@ -18,8 +18,13 @@ h1{font-size:20px;margin:4px 0 2px}
 .seg button[aria-pressed=true]{background:var(--acc);color:#fff;font-weight:600}
 .seg button:focus-visible{outline:2px solid var(--acc2);outline-offset:-2px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
-.next{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
-@media (max-width:640px){.next{grid-template-columns:1fr}}
+.next{margin-bottom:16px}
+.opt{display:inline-flex;align-items:center;gap:6px;font-size:14px;color:var(--fg);cursor:pointer}
+.opt input{width:18px;height:18px;accent-color:var(--acc)}
+.opt[aria-disabled=true]{opacity:.45;cursor:default}
+.tlbtn{all:unset;cursor:pointer;display:flex;width:100%;justify-content:space-between;align-items:center;font-weight:600}
+.tlbtn:focus-visible{outline:2px solid var(--acc2);outline-offset:2px}
+.tlbtn span{color:var(--sub);font-weight:400;font-size:13px}
 .next h2{font-size:14px;margin:0 0 8px;color:var(--sub);font-weight:600}
 .n-item{display:flex;align-items:baseline;gap:10px;padding:6px 0;border-top:1px solid var(--line)}
 .n-item:first-of-type{border-top:0}
@@ -63,25 +68,29 @@ footer{margin:18px 0 6px;font-size:12px;color:var(--sub)}
 <div class="bar">
   <div class="seg" id="dir" role="group" aria-label="方向"></div>
   <div class="seg" id="day" role="group" aria-label="運転日"></div>
+  <div class="seg" id="grp" role="group" aria-label="表示する路線"></div>
+  <label class="opt" id="nexlabel"><input type="checkbox" id="hidenex"> 成田エクスプレスを隠す</label>
   <label class="sub">時刻 <input type="time" id="at"></label>
   <button class="btn" id="nowbtn" type="button">現在時刻に戻す</button>
 </div>
 <div class="sub note" id="holidayhint"></div>
 
-<section class="next" aria-live="polite">
-  <div class="card"><h2>山手線 次の電車</h2><div id="nextY"></div></div>
-  <div class="card"><h2>それ以外 次の電車</h2><div id="nextO"></div></div>
+<section class="next card" aria-live="polite">
+  <h2 id="nexttitle"></h2><div id="nextBox"></div>
 </section>
 
 <section class="card">
-  <table class="timeline" id="tl">
-    <thead><tr><th>時</th><th>山手線</th><th>山手線以外</th></tr></thead>
+  <button class="tlbtn" id="tlbtn" type="button" aria-expanded="false" aria-controls="tlwrap">時刻表を表示<span id="tlcount"></span></button>
+  <div id="tlwrap" hidden>
+  <div style="overflow-x:auto;margin-top:10px"><table class="timeline" id="tl">
+    <thead><tr><th>時</th><th id="thgrp"></th></tr></thead>
     <tbody></tbody>
-  </table>
+  </table></div>
   <div class="detail" id="detail" aria-live="polite"><span class="sub">時刻をタップすると詳細が出ます。</span></div>
   <div class="legend">
     <span class="tag">埼</span>埼京線・川越線 <span class="tag">り</span>りんかい線直通 <span class="tag">湘</span>湘南新宿ライン <span class="tag">相</span>相鉄線直通 <span class="tag exp">特</span>特急(成田エクスプレス・踊り子など)<br>
     24時台は日付が変わった後(24:03 = 0:03)です。
+  </div>
   </div>
 </section>
 <footer id="foot"></footer>
@@ -91,7 +100,8 @@ footer{margin:18px 0 6px;font-size:12px;color:var(--sub)}
 const DATA = /*DATA*/null;
 const T = DATA.t.map(a => ({day:a[0],dir:a[1],group:a[2],line:a[3],type:a[4],name:a[5],no:a[6],
   from:a[7],to:a[8],osaki:a[9],pass:!!a[10],shin:a[11],key:a[12],om:a[13],sm:a[14]}));
-const st = {dir:'O>S', day:null, group:'', sel:null};
+const store = {get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }};
+const st = {dir:'O>S', day:null, group:store.get('grp')==='山手線' ? '山手線' : 'その他', hideNex:store.get('hidenex')==='1', showTable:false, sel:null};
 const $ = id => document.getElementById(id);
 const dispT = s => { if(!s) return '--'; const [h,m]=s.split(':').map(Number); return (h>=24?h-24:h)+':'+String(m).padStart(2,'0'); };
 const dispM = n => dispT(String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0'));
@@ -106,9 +116,9 @@ function otherTime(r){ return st.dir==='O>S' ? r.shin : r.osaki; }
 function seg(container, items, key){
   container.replaceChildren();
   items.forEach(([v,t]) => { const b=el('button',null,t); b.type='button'; b.setAttribute('aria-pressed', st[key]===v);
-    b.onclick=()=>{ st[key]=v; st.sel=null; render(); }; container.append(b); });
+    b.onclick=()=>{ st[key]=v; st.sel=null; if(key==='group') store.set('grp',v); render(); }; container.append(b); });
 }
-function rows(group){ return T.filter(r => r.day===st.day && r.dir===st.dir && (!group || r.group===group)); }
+function rows(group){ return T.filter(r => r.day===st.day && r.dir===st.dir && r.group===group && !(st.hideNex && r.line==='成田エクスプレス')); }
 function nowMin(){ const v=$('at').value; if(!v) return 0; const [h,m]=v.split(':').map(Number); return svcMin(h,m); }
 
 function renderNext(box, group){
@@ -132,13 +142,13 @@ function renderNext(box, group){
 
 function renderTable(){
   const tb=document.querySelector('#tl tbody'); tb.replaceChildren();
-  const all=rows(); const hours=[...new Set(all.map(r=>Math.floor(r.key/60)))].sort((a,b)=>a-b);
+  const all=rows(st.group); const hours=[...new Set(all.map(r=>Math.floor(r.key/60)))].sort((a,b)=>a-b);
   const baseH=Math.floor(nowMin()/60);
   hours.forEach(h=>{
     const tr=el('tr', h<baseH?'past':''); tr.append(el('td','h',h+'時'));
-    ['山手線','その他'].forEach(g=>{
+    [st.group].forEach(g=>{
       const td=el('td'); const chips=el('div','chips');
-      all.filter(r=>r.group===g && Math.floor(r.key/60)===h).forEach(r=>{
+      all.filter(r=>Math.floor(r.key/60)===h).forEach(r=>{
         const [s,c]=short(r); const b=el('button','chip '+(c==='exp'?'exp':'')+(st.sel===r?' sel':''));
         b.type='button'; b.append(String(r.key%60).padStart(2,'0'));
         if(r.pass && st.dir==='O>S') b.append(el('small',null,'着'));
@@ -165,7 +175,18 @@ function renderDetail(){
 function render(){
   seg($('dir'), [['O>S','大崎 → 新宿'],['S>O','新宿 → 大崎']], 'dir');
   seg($('day'), [['weekday','平日'],['holiday','土休日']], 'day');
-  renderNext($('nextY'),'山手線'); renderNext($('nextO'),'その他'); renderTable(); renderDetail();
+  seg($('grp'), [['その他','山手線以外'],['山手線','山手線']], 'group');
+  const yam = st.group==='山手線';
+  $('hidenex').checked = st.hideNex; $('hidenex').disabled = yam;
+  $('nexlabel').setAttribute('aria-disabled', yam);
+  $('nexttitle').textContent = (yam ? '山手線' : '山手線以外'+(st.hideNex ? '（成田エクスプレス除く）' : ''))+' 次の電車';
+  $('thgrp').textContent = yam ? '山手線' : '山手線以外';
+  renderNext($('nextBox'), st.group);
+  $('tlwrap').hidden = !st.showTable;
+  $('tlbtn').setAttribute('aria-expanded', st.showTable);
+  $('tlbtn').firstChild.nodeValue = st.showTable ? '時刻表を閉じる' : '時刻表を表示';
+  $('tlcount').textContent = rows(st.group).length+'本';
+  if(st.showTable){ renderTable(); renderDetail(); }
 }
 
 function setNow(){ const n=new Date(); $('at').value=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0'); }
@@ -174,6 +195,8 @@ function setNow(){ const n=new Date(); $('at').value=String(n.getHours()).padSta
   $('holidayhint').textContent='※ 祝日・年末年始は「土休日」を選んでください（このアプリは祝日を判定しません）。';
   setNow(); $('at').addEventListener('input', render);
   $('nowbtn').onclick=()=>{ setNow(); render(); };
+  $('tlbtn').onclick=()=>{ st.showTable=!st.showTable; render(); };
+  $('hidenex').onchange=e=>{ st.hideNex=e.target.checked; store.set('hidenex', st.hideNex?'1':'0'); st.sel=null; render(); };
   const m=DATA.meta;
   $('metaline').textContent='JR東日本 時刻表データ '+m.edition+'版（取得 '+m.fetched+'） ・ 全'+T.length+'本 ・ オフラインで動作';
   $('foot').textContent='出典: '+m.source+'。'+m.time_format+' 臨時列車・ダイヤ乱れは反映されません。';
