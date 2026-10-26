@@ -101,7 +101,7 @@ const DATA = /*DATA*/null;
 const T = DATA.t.map(a => ({day:a[0],dir:a[1],group:a[2],line:a[3],type:a[4],name:a[5],no:a[6],
   from:a[7],to:a[8],osaki:a[9],pass:!!a[10],shin:a[11],key:a[12],om:a[13],sm:a[14]}));
 const store = {get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }};
-const st = {dir:'O>S', day:null, group:store.get('grp')==='山手線' ? '山手線' : 'その他', hideNex:store.get('hidenex')==='1', showTable:false, sel:null};
+const st = {dir:'O>S', day:null, group:store.get('grp')==='山手線' ? '山手線' : 'その他', hideNex:store.get('hidenex')!=='0', showTable:false, sel:null};
 const $ = id => document.getElementById(id);
 const dispT = s => { if(!s) return '--'; const [h,m]=s.split(':').map(Number); return (h>=24?h-24:h)+':'+String(m).padStart(2,'0'); };
 const dispM = n => dispT(String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0'));
