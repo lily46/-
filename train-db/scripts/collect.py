@@ -1,5 +1,6 @@
 """一覧ページから列車URLを集め、各列車ページを取得してキャッシュする。"""
-import json, concurrent.futures as cf, sys
+import json, os, concurrent.futures as cf, sys
+WORK = os.environ.get("JR_WORK", "/tmp")
 from jrparse import fetch, parse_list, BASE
 
 ED = "2611"
@@ -19,6 +20,10 @@ PAGES = [
     ("0866", "11", "新宿", "山手線 渋谷・品川方面(内回り)"),
     ("0866", "12", "新宿", "成田エクスプレス 成田空港方面"),
     ("0866", "91", "新宿", "相鉄線直通 相鉄線方面(下り)"),
+    # 新宿止まりで大崎を通過する列車(成田エクスプレス新宿行など)は新宿の発車一覧に出ないため、渋谷から拾う
+    ("0808", "03", "渋谷", "湘南新宿ライン 高崎・宇都宮方面(北行)"),
+    ("0808", "05", "渋谷", "山手線 新宿・池袋方面(外回り)"),
+    ("0808", "08", "渋谷", "成田エクスプレス 新宿方面"),
 ]
 DAYS = {"0": "weekday", "1": "holiday"}
 
@@ -39,7 +44,7 @@ def main():
             print(name, label, dn, len(items), flush=True)
             for it in items:
                 out.append(dict(station=name, page=label, day=dn, **it))
-    json.dump(out, open("/tmp/jr_lists.json", "w"), ensure_ascii=False)
+    json.dump(out, open(os.path.join(WORK, "jr_lists.json"), "w"), ensure_ascii=False)
     urls = sorted({o["url"] for o in out})
     print("unique train pages:", len(urls))
     n = 0

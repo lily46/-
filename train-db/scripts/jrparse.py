@@ -64,7 +64,10 @@ def parse_train(html):
             cells = tr.find_all("td")
             vals = [re.sub(r"\s+", " ", c.get_text(" ", strip=True)) for c in cells]
             if label == "列車種別":
-                cols = [dict(type=v, number="", note="", stops=[]) for v in vals]
+                cols = [dict(type=v, name="", number="", note="", stops=[]) for v in vals]
+            elif label == "列車名":
+                for c, v in zip(cols, vals):
+                    c["name"] = v
             elif label == "列車番号":
                 for c, v in zip(cols, vals):
                     c["number"] = v

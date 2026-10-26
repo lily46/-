@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>大崎⇄新宿 発車時刻表</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--fg:#1c2330;--sub:#667085;--line:#e3e6eb;--acc:#0b8f3c;--acc2:#2f5fd0;--chip:#eef1f5;--warn:#b25e00}
+@media (prefers-color-scheme:dark){:root{--bg:#12151b;--card:#1b2029;--fg:#e8ebf1;--sub:#98a2b3;--line:#2b323f;--acc:#3ecf74;--acc2:#7fa2ff;--chip:#262d3a;--warn:#f0a050}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif}
+main{max-width:980px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:4px 0 2px}
+.sub{color:var(--sub);font-size:12.5px}
+.bar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:14px 0}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card)}
+.seg button{all:unset;cursor:pointer;padding:8px 14px;font-size:14px;color:var(--sub)}
+.seg button[aria-pressed=true]{background:var(--acc);color:#fff;font-weight:600}
+.seg button:focus-visible{outline:2px solid var(--acc2);outline-offset:-2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.next{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+@media (max-width:640px){.next{grid-template-columns:1fr}}
+.next h2{font-size:14px;margin:0 0 8px;color:var(--sub);font-weight:600}
+.n-item{display:flex;align-items:baseline;gap:10px;padding:6px 0;border-top:1px solid var(--line)}
+.n-item:first-of-type{border-top:0}
+.n-time{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;min-width:68px}
+.n-main{flex:1;min-width:0}
+.n-main b{font-weight:600}
+.n-eta{color:var(--acc);font-weight:600;white-space:nowrap}
+.n-meta{color:var(--sub);font-size:12.5px}
+.tag{display:inline-block;border-radius:5px;padding:0 6px;font-size:11.5px;background:var(--chip);color:var(--sub);margin-right:4px}
+.tag.exp{background:#fde7c8;color:#7a4300}
+@media (prefers-color-scheme:dark){.tag.exp{background:#4a3414;color:#ffd08a}}
+.timeline{width:100%;border-collapse:collapse}
+.timeline th,.timeline td{border-top:1px solid var(--line);padding:6px 8px;vertical-align:top;text-align:left}
+.timeline thead th{border-top:0;color:var(--sub);font-size:12.5px;font-weight:600}
+.timeline td.h{width:52px;font-weight:700;color:var(--sub);white-space:nowrap}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{all:unset;cursor:pointer;background:var(--chip);border-radius:7px;padding:2px 7px;font-variant-numeric:tabular-nums;font-size:14px}
+.chip:hover{filter:brightness(.95)}
+.chip:focus-visible{outline:2px solid var(--acc2)}
+.chip small{font-size:10.5px;color:var(--sub);margin-left:2px}
+.chip.exp{background:#fde7c8;color:#7a4300}
+@media (prefers-color-scheme:dark){.chip.exp{background:#4a3414;color:#ffd08a}}
+.chip.sel{background:var(--acc2);color:#fff}
+.chip.sel small{color:#dfe7ff}
+.detail{margin-top:12px;min-height:44px}
+.detail dl{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin:0}
+.detail dt{color:var(--sub)}.detail dd{margin:0}
+.legend{margin-top:12px;font-size:12.5px;color:var(--sub)}
+.past td.h{opacity:.45}
+input[type=time]{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--fg)}
+a.btn,button.btn{all:unset;cursor:pointer;color:var(--acc2);font-size:13px;text-decoration:underline}
+footer{margin:18px 0 6px;font-size:12px;color:var(--sub)}
+.note{color:var(--warn)}
+</style>
+</head>
+<body>
+<main>
+<h1>大崎⇄新宿 発車時刻表</h1>
+<div class="sub" id="metaline"></div>
+
+<div class="bar">
+  <div class="seg" id="dir" role="group" aria-label="方向"></div>
+  <div class="seg" id="day" role="group" aria-label="運転日"></div>
+  <label class="sub">時刻 <input type="time" id="at"></label>
+  <button class="btn" id="nowbtn" type="button">現在時刻に戻す</button>
+</div>
+<div class="sub note" id="holidayhint"></div>
+
+<section class="next" aria-live="polite">
+  <div class="card"><h2>山手線 次の電車</h2><div id="nextY"></div></div>
+  <div class="card"><h2>それ以外 次の電車</h2><div id="nextO"></div></div>
+</section>
+
+<section class="card">
+  <table class="timeline" id="tl">
+    <thead><tr><th>時</th><th>山手線</th><th>山手線以外</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <div class="detail" id="detail" aria-live="polite"><span class="sub">時刻をタップすると詳細が出ます。</span></div>
+  <div class="legend">
+    <span class="tag">埼</span>埼京線・川越線 <span class="tag">り</span>りんかい線直通 <span class="tag">湘</span>湘南新宿ライン <span class="tag">相</span>相鉄線直通 <span class="tag exp">特</span>特急(成田エクスプレス・踊り子など)<br>
+    24時台は日付が変わった後(24:03 = 0:03)です。
+  </div>
+</section>
+<footer id="foot"></footer>
+</main>
+
+<script>
+const DATA = /*DATA*/null;
+const T = DATA.t.map(a => ({day:a[0],dir:a[1],group:a[2],line:a[3],type:a[4],name:a[5],no:a[6],
+  from:a[7],to:a[8],osaki:a[9],pass:!!a[10],shin:a[11],key:a[12],om:a[13],sm:a[14]}));
+const st = {dir:'O>S', day:null, group:'', sel:null};
+const $ = id => document.getElementById(id);
+const dispT = s => { if(!s) return '--'; const [h,m]=s.split(':').map(Number); return (h>=24?h-24:h)+':'+String(m).padStart(2,'0'); };
+const dispM = n => dispT(String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0'));
+const svcMin = (h,m) => (h<4?h+24:h)*60+m;
+const short = r => r.type==='特急' ? ['特','exp'] : r.line==='埼京線' ? ['埼',''] : r.line==='りんかい線直通' ? ['り',''] : r.line==='湘南新宿ライン' ? ['湘',''] : r.line==='相鉄線直通' ? ['相',''] : ['',''];
+const loop = r => r.group==='山手線' ? (r.dir==='O>S' ? '外回り' : '内回り') : '';
+function label(r){ return r.type==='特急' && r.name ? r.name : (r.type==='普通' ? '' : r.type); }
+function el(tag, cls, text){ const e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; }
+function ride(r){ return r.pass ? null : Math.abs(r.sm - r.om); }
+function otherTime(r){ return st.dir==='O>S' ? r.shin : r.osaki; }
+
+function seg(container, items, key){
+  container.replaceChildren();
+  items.forEach(([v,t]) => { const b=el('button',null,t); b.type='button'; b.setAttribute('aria-pressed', st[key]===v);
+    b.onclick=()=>{ st[key]=v; st.sel=null; render(); }; container.append(b); });
+}
+function rows(group){ return T.filter(r => r.day===st.day && r.dir===st.dir && (!group || r.group===group)); }
+function nowMin(){ const v=$('at').value; if(!v) return 0; const [h,m]=v.split(':').map(Number); return svcMin(h,m); }
+
+function renderNext(box, group){
+  box.replaceChildren();
+  const base = nowMin();
+  const list = rows(group).filter(r => r.key>=base).slice(0,4);
+  if(!list.length){ box.append(el('div','sub','この時刻以降の列車はありません')); return; }
+  list.forEach(r => {
+    const it=el('div','n-item'); it.append(el('div','n-time', dispM(r.key)));
+    const main=el('div','n-main');
+    const l1=el('div'); const [s,c]=short(r); if(s) l1.append(el('span','tag '+c,s));
+    l1.append(el('b',null,loop(r) || ((label(r)?label(r)+' ':'')+(r.to?r.to+'行':''))));
+    if(r.group!=='山手線' && r.line && !s) l1.append(el('span','tag',r.line)); main.append(l1);
+    const meta = st.dir==='O>S'
+      ? (r.pass ? '大崎通過・新宿着 '+dispT(r.shin) : '新宿着 '+dispT(r.shin)+'（'+ride(r)+'分）')
+      : (r.pass ? '大崎通過' : '大崎着 '+dispT(r.osaki)+'（'+ride(r)+'分）');
+    main.append(el('div','n-meta',meta+(r.from && r.group!=='山手線' ? '　'+r.from+'発' : '')));
+    it.append(main); it.append(el('div','n-eta','あと'+Math.max(0,r.key-base)+'分')); box.append(it);
+  });
+}
+
+function renderTable(){
+  const tb=document.querySelector('#tl tbody'); tb.replaceChildren();
+  const all=rows(); const hours=[...new Set(all.map(r=>Math.floor(r.key/60)))].sort((a,b)=>a-b);
+  const baseH=Math.floor(nowMin()/60);
+  hours.forEach(h=>{
+    const tr=el('tr', h<baseH?'past':''); tr.append(el('td','h',h+'時'));
+    ['山手線','その他'].forEach(g=>{
+      const td=el('td'); const chips=el('div','chips');
+      all.filter(r=>r.group===g && Math.floor(r.key/60)===h).forEach(r=>{
+        const [s,c]=short(r); const b=el('button','chip '+(c==='exp'?'exp':'')+(st.sel===r?' sel':''));
+        b.type='button'; b.append(String(r.key%60).padStart(2,'0'));
+        if(r.pass && st.dir==='O>S') b.append(el('small',null,'着'));
+        if(s) b.append(el('small',null,s));
+        b.onclick=()=>{ st.sel=r; renderTable(); renderDetail(); }; chips.append(b);
+      });
+      td.append(chips); tr.append(td);
+    });
+    tb.append(tr);
+  });
+}
+
+function renderDetail(){
+  const d=$('detail'); d.replaceChildren(); const r=st.sel;
+  if(!r){ d.append(el('span','sub','時刻をタップすると詳細が出ます。')); return; }
+  const dl=el('dl'); const add=(k,v)=>{ dl.append(el('dt',null,k)); dl.append(el('dd',null,v)); };
+  add('列車', [r.line, label(r)||r.type, r.no].filter(Boolean).join(' / '));
+  if(r.group==='山手線') add('方向', loop(r)); else add('始発 → 終着', (r.from||'?')+' → '+(r.to||'?'));
+  if(st.dir==='O>S'){ add('大崎', r.pass?'通過（停車しません）':dispT(r.osaki)+' 発'); add('新宿', dispT(r.shin)+' 着'+(ride(r)!=null?'（所要'+ride(r)+'分）':'')); }
+  else { add('新宿', dispT(r.shin)+' 発'); add('大崎', r.pass?'通過（停車しません）':dispT(r.osaki)+' 着'+(ride(r)!=null?'（所要'+ride(r)+'分）':'')); }
+  d.append(dl);
+}
+
+function render(){
+  seg($('dir'), [['O>S','大崎 → 新宿'],['S>O','新宿 → 大崎']], 'dir');
+  seg($('day'), [['weekday','平日'],['holiday','土休日']], 'day');
+  renderNext($('nextY'),'山手線'); renderNext($('nextO'),'その他'); renderTable(); renderDetail();
+}
+
+function setNow(){ const n=new Date(); $('at').value=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0'); }
+(function init(){
+  const n=new Date(); const dow=n.getDay(); st.day=(dow===0||dow===6)?'holiday':'weekday';
+  $('holidayhint').textContent='※ 祝日・年末年始は「土休日」を選んでください（このアプリは祝日を判定しません）。';
+  setNow(); $('at').addEventListener('input', render);
+  $('nowbtn').onclick=()=>{ setNow(); render(); };
+  const m=DATA.meta;
+  $('metaline').textContent='JR東日本 時刻表データ '+m.edition+'版（取得 '+m.fetched+'） ・ 全'+T.length+'本 ・ オフラインで動作';
+  $('foot').textContent='出典: '+m.source+'。'+m.time_format+' 臨時列車・ダイヤ乱れは反映されません。';
+  render();
+})();
+</script>
+</body>
+</html>
