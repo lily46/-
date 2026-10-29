@@ -55,6 +55,9 @@ h1{font-size:20px;margin:4px 0 2px}
 .legend{margin-top:12px;font-size:12.5px;color:var(--sub)}
 .past td.h{opacity:.45}
 input[type=time]{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--fg)}
+button.step{font:inherit;font-size:14px;cursor:pointer;padding:6px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--fg)}
+button.step:hover{border-color:var(--acc)}
+button.step:focus-visible{outline:2px solid var(--acc2);outline-offset:1px}
 a.btn,button.btn{all:unset;cursor:pointer;color:var(--acc2);font-size:13px;text-decoration:underline}
 footer{margin:18px 0 6px;font-size:12px;color:var(--sub)}
 .note{color:var(--warn)}
@@ -71,6 +74,7 @@ footer{margin:18px 0 6px;font-size:12px;color:var(--sub)}
   <div class="seg" id="grp" role="group" aria-label="表示する路線"></div>
   <label class="opt" id="nexlabel"><input type="checkbox" id="hidenex"> 成田エクスプレスを隠す</label>
   <label class="sub">時刻 <input type="time" id="at"></label>
+  <button class="step" id="plus10" type="button">+10分</button>
   <button class="btn" id="nowbtn" type="button">現在時刻に戻す</button>
 </div>
 <div class="sub note" id="holidayhint"></div>
@@ -196,6 +200,8 @@ function setNow(){ const n=new Date(); $('at').value=String(n.getHours()).padSta
   $('holidayhint').textContent='※ 祝日・年末年始は「土休日」を選んでください（このアプリは祝日を判定しません）。';
   setNow(); $('at').addEventListener('input', render);
   $('nowbtn').onclick=()=>{ setNow(); render(); };
+  $('plus10').onclick=()=>{ const v=$('at').value||'00:00'; const [h,m]=v.split(':').map(Number); const t=(h*60+m+10)%1440;
+    $('at').value=String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0'); st.sel=null; render(); };
   $('tlbtn').onclick=()=>{ st.showTable=!st.showTable; render(); };
   $('hidenex').onchange=e=>{ st.hideNex=e.target.checked; store.set('hidenex', st.hideNex?'1':'0'); st.sel=null; render(); };
   const m=DATA.meta;
