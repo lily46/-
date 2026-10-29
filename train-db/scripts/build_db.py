@@ -23,8 +23,11 @@ def main():
             train_number=r["train_number"], origin=r["origin"], destination=r["destination"],
             osaki_time=r["osaki_time"], osaki_passing=int(r["osaki_passing"]),
             shinjuku_time=r["shinjuku_time"], shibuya_time=r["shibuya_time"],
+            osaki_arr=r["osaki_arr"], osaki_dep=r["osaki_dep"], shibuya_arr=r["shibuya_arr"],
+            shibuya_dep=r["shibuya_dep"], shinjuku_arr=r["shinjuku_arr"], shinjuku_dep=r["shinjuku_dep"],
             osaki_min=om, shinjuku_min=sm, shibuya_min=hmn,
-            sort_min=hmn if r["direction"] == "H>O" else (om if om is not None else sm),
+            # 一覧の基準時刻: 渋谷→大崎は渋谷発、新宿→大崎は新宿発、大崎→新宿は大崎発(大崎通過なら新宿着)
+            sort_min={"H>O": hmn, "S>O": sm}.get(r["direction"], om if om is not None else sm),
             note=r["note"], source_url=r["source"]))
     rows.sort(key=lambda x: (x["day_type"], x["direction"], x["group_name"], x["sort_min"], x["train_number"]))
     os.makedirs(os.path.join(ROOT, "data"), exist_ok=True)
@@ -41,6 +44,7 @@ def main():
         group_name TEXT NOT NULL, line TEXT, train_type TEXT, train_name TEXT, train_number TEXT,
         origin TEXT, destination TEXT,
         osaki_time TEXT, osaki_passing INTEGER NOT NULL, shinjuku_time TEXT, shibuya_time TEXT,
+        osaki_arr TEXT, osaki_dep TEXT, shibuya_arr TEXT, shibuya_dep TEXT, shinjuku_arr TEXT, shinjuku_dep TEXT,
         osaki_min INTEGER, shinjuku_min INTEGER, shibuya_min INTEGER, sort_min INTEGER NOT NULL,
         note TEXT, source_url TEXT)""")
     db.executemany(f"INSERT INTO trains({','.join(cols)}) VALUES({','.join('?'*len(cols))})",
@@ -50,7 +54,8 @@ def main():
     meta = {"edition": EDITION, "fetched": FETCHED, "source": SOURCE,
             "section": "大崎〜新宿・渋谷〜大崎 (山手線・埼京線・湘南新宿ライン・相鉄直通・特急)",
             "time_format": "HH:MM。24:00以降は翌日の0時台(24:03 = 0:03)。osaki_passing=1は大崎通過(osaki_timeはNULL)",
-            "direction": "O>S = 大崎→新宿(osaki_time=大崎発, shinjuku_time=新宿着) / S>O = 新宿→大崎(shinjuku_time=新宿発, osaki_time=大崎着) / H>O = 渋谷→大崎(shibuya_time=渋谷発, osaki_time=大崎着, shinjuku_time=NULL)"}
+            "direction": "O>S = 大崎→新宿(osaki_time=大崎発, shinjuku_time=新宿着) / S>O = 新宿→大崎(shinjuku_time=新宿発, osaki_time=大崎の時刻) / H>O = 渋谷→大崎(shibuya_time=渋谷発, osaki_time=大崎の時刻, shinjuku_time=NULL)",
+            "station_times": "osaki_arr/osaki_dep, shibuya_arr/shibuya_dep, shinjuku_arr/shinjuku_dep = 各駅の着・発。公式ページは通過駅以外も『発』のみ載せることが多く、その場合 着はNULL。大崎を通過する列車は大崎が両方NULL"}
     db.executemany("INSERT INTO meta VALUES(?,?)", meta.items())
     db.commit(); db.close()
     # CSV
@@ -63,7 +68,8 @@ def main():
     slim = [[r["day_type"], r["direction"], r["group_name"], r["line"], r["train_type"], r["train_name"],
              r["train_number"], r["origin"], r["destination"], r["osaki_time"], r["osaki_passing"],
              r["shinjuku_time"], r["sort_min"], r["osaki_min"], r["shinjuku_min"],
-             r["shibuya_time"], r["shibuya_min"]] for r in rows]
+             r["shibuya_time"], r["shibuya_min"], r["osaki_arr"], r["osaki_dep"], r["shinjuku_arr"],
+             r["shinjuku_dep"], r["shibuya_arr"], r["shibuya_dep"]] for r in rows]
     tpl = open(os.path.join(ROOT, "scripts", "app_template.html"), encoding="utf-8").read()
     html = tpl.replace("/*DATA*/null", json.dumps({"meta": meta, "t": slim}, ensure_ascii=False, separators=(",", ":")))
     open(os.path.join(ROOT, "app", "index.html"), "w", encoding="utf-8").write(html)

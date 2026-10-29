@@ -37,7 +37,7 @@ ORDER BY sort_min;
 ## 列の意味（`trains` テーブル）
 
 - `direction`: `O>S` = 大崎→新宿（`osaki_time`=大崎発 / `shinjuku_time`=新宿着）、`S>O` = 新宿→大崎（`shinjuku_time`=新宿発 / `osaki_time`=大崎着）、`H>O` = 渋谷→大崎（`shibuya_time`=渋谷発 / `osaki_time`=大崎着、`shinjuku_time` は NULL）
-- 時刻は `HH:MM`。**24:00以降は日付が変わった後**（24:03 = 0:03）。`sort_min` は 0:00 起点の分で、並べ替えに使えます。
+- 時刻は `HH:MM`。**24:00以降は日付が変わった後**（24:03 = 0:03）。`sort_min` は 0:00 起点の分で、方向ごとの基準時刻（大崎→新宿=大崎発、新宿→大崎=新宿発、渋谷→大崎=渋谷発。大崎通過の列車は新宿着）です。各駅の着発は `osaki_arr/osaki_dep`、`shibuya_arr/shibuya_dep`、`shinjuku_arr/shinjuku_dep`。公式ページは「発」しか載せない駅が多く、その場合 `*_arr` は NULL です。
 - `osaki_passing=1`: 大崎を**通過**する列車（成田エクスプレス・踊り子など）。`osaki_time` は NULL。
 - 山手線は1周する列車なので、`origin`/`destination` には意味がありません（外回り＝大崎→渋谷→新宿、内回り＝新宿→渋谷→大崎）。
 - `source_url`: その列車の公式詳細ページ。

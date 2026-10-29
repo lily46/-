@@ -81,6 +81,20 @@ def sort_key(r):
         return hm(r["shinjuku_time"])
     return hm(r["shinjuku_time"])
 
+def times_for(st, lo, hi):
+    out = {}
+    for key, code in (("osaki", OSAKI), ("shibuya", "0808"), ("shinjuku", SHINJUKU)):
+        a, d = stn_times(st, code, lo, hi)
+        out[key + "_arr"], out[key + "_dep"] = a, d
+    return out
+
+def stn_times(stops, name_code, lo, hi):
+    """大崎/渋谷/新宿の各駅について、列の[lo,hi]区間にある停車行の (着, 発) を返す。通過なら (None, None)。"""
+    for s in stops[max(lo, 0):hi + 1]:
+        if s["code"] == name_code and (s["arr"] or s["dep"]):
+            return s["arr"], s["dep"]
+    return None, None
+
 def main():
     lists = json.load(open(os.path.join(WORK, "jr_lists.json")))
     refs = collections.defaultdict(lambda: dict(days=set(), pages=set()))
@@ -108,15 +122,18 @@ def main():
                     o_t = so and (so["arr"] or so["dep"])
                     ok = bool(s_t)                 # 新宿着のみ
                 if ok and (passing or o_t):
+                    lo, hi = (j - 1, j + 1) if i is None else sorted((i, j))
                     cands.append(dict(direction=d, osaki_time=o_t, osaki_passing=passing,
-                                      shinjuku_time=s_t, shibuya_time=None))
+                                      shinjuku_time=s_t, shibuya_time=None, **times_for(st, lo, hi)))
             resh = classify_h(st)
             if resh:
                 k, i, passing = resh
                 o_t = None if i is None else (st[i]["arr"] or st[i]["dep"])
                 if passing or o_t:
+                    hi = len(st) - 1 if i is None else i
+                    lo = 0
                     cands.append(dict(direction="H>O", osaki_time=o_t, osaki_passing=passing,
-                                      shinjuku_time=None, shibuya_time=st[k]["dep"]))
+                                      shinjuku_time=None, shibuya_time=st[k]["dep"], **times_for(st, lo, hi)))
             if not cands:
                 continue
             pages = sorted(f"{a}:{b}" for a, b in r["pages"])

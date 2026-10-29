@@ -69,6 +69,23 @@ class TrainDataTest(unittest.TestCase):
             h_o = {r["train_number"] for r in self.rows if (r["day_type"], r["direction"]) == (day, "H>O")}
             self.assertEqual(s_o, h_o, day)
 
+    def test_sort_min_is_departure_of_the_first_station(self):
+        # 一覧の基準時刻: 大崎→新宿=大崎発、新宿→大崎=新宿発、渋谷→大崎=渋谷発
+        for r in self.rows:
+            if r["direction"] == "S>O":
+                self.assertEqual(r["sort_min"], r["shinjuku_min"], r["id"])
+            elif r["direction"] == "H>O":
+                self.assertEqual(r["sort_min"], r["shibuya_min"], r["id"])
+            elif not r["osaki_passing"]:
+                self.assertEqual(r["sort_min"], r["osaki_min"], r["id"])
+
+    def test_rinkai_train_leaving_shinjuku_at_1706(self):
+        # 公式: 平日 新宿17:06発 快速 新木場行(1620F) 渋谷17:10 大崎17:21発
+        q = {(r["direction"], r["train_number"]): r for r in self.rows if r["day_type"] == "weekday"}
+        s = q[("S>O", "1620F")]
+        self.assertEqual((s["shinjuku_dep"], s["shibuya_dep"], s["osaki_dep"], s["sort_min"]), ("17:06", "17:10", "17:21", 17 * 60 + 6))
+        self.assertEqual(q[("H>O", "1620F")]["sort_min"], 17 * 60 + 10)
+
     def test_html_embeds_same_number_of_trains(self):
         html = open(os.path.join(ROOT, "app", "index.html"), encoding="utf-8").read()
         m = re.search(r"const DATA = (\{.*?\});\nconst T =", html, re.S)
