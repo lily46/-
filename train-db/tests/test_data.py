@@ -13,13 +13,23 @@ class TrainDataTest(unittest.TestCase):
 
     def test_not_empty_and_all_combinations_present(self):
         for day in ("weekday", "holiday"):
-            for d in ("O>S", "S>O"):
+            for d in ("O>S", "S>O", "H>O"):
                 for g in ("山手線", "その他"):
                     n = sum(1 for r in self.rows if (r["day_type"], r["direction"], r["group_name"]) == (day, d, g))
                     self.assertGreater(n, 80, (day, d, g))
 
     def test_time_format_and_order(self):
         for r in self.rows:
+            if r["direction"] == "H>O":        # 渋谷→大崎
+                self.assertRegex(r["shibuya_time"], TIME, r["id"])
+                self.assertIsNone(r["shinjuku_time"], r["id"])
+                if r["osaki_passing"]:
+                    self.assertIsNone(r["osaki_time"], r["id"])
+                else:
+                    self.assertRegex(r["osaki_time"], TIME, r["id"])
+                    ride = r["osaki_min"] - r["shibuya_min"]
+                    self.assertTrue(3 <= ride <= 15, (r["id"], ride))
+                continue
             self.assertRegex(r["shinjuku_time"], TIME, r["id"])
             if r["osaki_passing"]:
                 self.assertIsNone(r["osaki_time"], r["id"])
@@ -29,12 +39,12 @@ class TrainDataTest(unittest.TestCase):
             self.assertTrue(8 <= ride <= 25, (r["id"], ride))
 
     def test_no_duplicate_trains(self):
-        keys = [(r["day_type"], r["direction"], r["train_number"], r["osaki_time"], r["shinjuku_time"]) for r in self.rows]
+        keys = [(r["day_type"], r["direction"], r["train_number"], r["osaki_time"], r["shinjuku_time"], r["shibuya_time"]) for r in self.rows]
         self.assertEqual(len(keys), len(set(keys)))
 
     def test_yamanote_daytime_headway(self):
         for day in ("weekday", "holiday"):
-            for d in ("O>S", "S>O"):
+            for d in ("O>S", "S>O", "H>O"):
                 ks = sorted(r["sort_min"] for r in self.rows
                             if (r["day_type"], r["direction"], r["group_name"]) == (day, d, "山手線"))
                 day_ks = [k for k in ks if 600 <= k <= 900]
@@ -51,6 +61,13 @@ class TrainDataTest(unittest.TestCase):
         yo = sorted(r["sort_min"] for r in self.rows if (r["day_type"], r["direction"], r["group_name"]) == ("weekday", "O>S", "山手線"))
         self.assertLess(yo[0], 5 * 60)
         self.assertGreater(yo[-1], 24 * 60)
+
+    def test_shibuya_to_osaki_matches_shinjuku_to_osaki(self):
+        # 渋谷始発がないので、新宿→大崎の全列車が渋谷→大崎にも現れる(列車番号が一致)
+        for day in ("weekday", "holiday"):
+            s_o = {r["train_number"] for r in self.rows if (r["day_type"], r["direction"]) == (day, "S>O")}
+            h_o = {r["train_number"] for r in self.rows if (r["day_type"], r["direction"]) == (day, "H>O")}
+            self.assertEqual(s_o, h_o, day)
 
     def test_html_embeds_same_number_of_trains(self):
         html = open(os.path.join(ROOT, "app", "index.html"), encoding="utf-8").read()

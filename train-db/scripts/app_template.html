@@ -99,7 +99,7 @@ footer{margin:18px 0 6px;font-size:12px;color:var(--sub)}
 <script>
 const DATA = /*DATA*/null;
 const T = DATA.t.map(a => ({day:a[0],dir:a[1],group:a[2],line:a[3],type:a[4],name:a[5],no:a[6],
-  from:a[7],to:a[8],osaki:a[9],pass:!!a[10],shin:a[11],key:a[12],om:a[13],sm:a[14]}));
+  from:a[7],to:a[8],osaki:a[9],pass:!!a[10],shin:a[11],key:a[12],om:a[13],sm:a[14],shib:a[15],hm:a[16]}));
 const store = {get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }};
 const st = {dir:'O>S', day:null, group:store.get('grp')==='山手線' ? '山手線' : 'その他', hideNex:store.get('hidenex')!=='0', showTable:false, sel:null};
 const $ = id => document.getElementById(id);
@@ -110,7 +110,7 @@ const short = r => r.type==='特急' ? ['特','exp'] : r.line==='埼京線' ? ['
 const loop = r => r.group==='山手線' ? (r.dir==='O>S' ? '外回り' : '内回り') : '';
 function label(r){ return r.type==='特急' && r.name ? r.name : (r.type==='普通' ? '' : r.type); }
 function el(tag, cls, text){ const e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; }
-function ride(r){ return r.pass ? null : Math.abs(r.sm - r.om); }
+function ride(r){ return r.pass ? null : (r.dir==='H>O' ? r.om - r.hm : Math.abs(r.sm - r.om)); }
 function otherTime(r){ return st.dir==='O>S' ? r.shin : r.osaki; }
 
 function seg(container, items, key){
@@ -167,13 +167,14 @@ function renderDetail(){
   const dl=el('dl'); const add=(k,v)=>{ dl.append(el('dt',null,k)); dl.append(el('dd',null,v)); };
   add('列車', [r.line, label(r)||r.type, r.no].filter(Boolean).join(' / '));
   if(r.group==='山手線') add('方向', loop(r)); else add('始発 → 終着', (r.from||'?')+' → '+(r.to||'?'));
-  if(st.dir==='O>S'){ add('大崎', r.pass?'通過（停車しません）':dispT(r.osaki)+' 発'); add('新宿', dispT(r.shin)+' 着'+(ride(r)!=null?'（所要'+ride(r)+'分）':'')); }
+  if(st.dir==='H>O'){ add('渋谷', dispT(r.shib)+' 発'); add('大崎', r.pass?'通過（停車しません）':dispT(r.osaki)+' 着'+(ride(r)!=null?'（所要'+ride(r)+'分）':'')); }
+  else if(st.dir==='O>S'){ add('大崎', r.pass?'通過（停車しません）':dispT(r.osaki)+' 発'); add('新宿', dispT(r.shin)+' 着'+(ride(r)!=null?'（所要'+ride(r)+'分）':'')); }
   else { add('新宿', dispT(r.shin)+' 発'); add('大崎', r.pass?'通過（停車しません）':dispT(r.osaki)+' 着'+(ride(r)!=null?'（所要'+ride(r)+'分）':'')); }
   d.append(dl);
 }
 
 function render(){
-  seg($('dir'), [['O>S','大崎 → 新宿'],['S>O','新宿 → 大崎']], 'dir');
+  seg($('dir'), [['O>S','大崎 → 新宿'],['S>O','新宿 → 大崎'],['H>O','渋谷 → 大崎']], 'dir');
   seg($('day'), [['weekday','平日'],['holiday','土休日']], 'day');
   seg($('grp'), [['その他','山手線以外'],['山手線','山手線']], 'group');
   const yam = st.group==='山手線';
